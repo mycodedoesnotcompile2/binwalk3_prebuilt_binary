@@ -207,4 +207,4 @@ jobs:
          name: version ${{ env.BINWALK_VERSION }} - build ${{ env.BINWALK_CURRENT_COMMIT_ID }}
          tag_name: ${{ env.BINWALK_CURRENT_COMMIT_ID }}
          files: |
-           /tmp/results/binwalk-*
+           /tmp/results/binwalk3-*
