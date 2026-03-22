@@ -161,7 +161,13 @@ jobs:
           
           echo "BINWALK_BIN_PATH=$BINWALK_BIN_PATH" >> $GITHUB_ENV
           echo "BINWALK_BIN_HASH_PATH=$BINWALK_BIN_HASH_PATH" >> $GITHUB_ENV
-          
+
+
+      - name: List binwalk options + signatures/extractors 
+        run: |
+          "$BINWALK_BIN_PATH" -h
+          "$BINWALK_BIN_PATH" -L
+
       
       - name: Upload artifact
         uses: actions/upload-artifact@v6
