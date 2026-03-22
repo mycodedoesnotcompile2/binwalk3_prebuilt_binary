@@ -110,7 +110,7 @@ jobs:
         run: |
           if [[ $OS =~ ^ubuntu.*$ ]]; then
             $APT update
-            $APT install crossbuild-essential-armhf libsqlite3-dev
+            $APT install crossbuild-essential-armhf libfontconfig1-dev liblzma-dev
           fi
 
           # for musl builds
