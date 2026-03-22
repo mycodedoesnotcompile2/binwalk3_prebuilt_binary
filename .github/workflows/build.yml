@@ -72,7 +72,7 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           cd /tmp/
-          BINWALK_PREBUILT_LATEST_TAG=$(gh release list -R mycodedoesnotcompile2/BINWALK_prebuilt_binary --json tagName -L 1 --jq '.[].tagName' --exclude-drafts --exclude-pre-releases)
+          BINWALK_PREBUILT_LATEST_TAG=$(gh release list -R mycodedoesnotcompile2/binwalk3_prebuilt_binary --json tagName -L 1 --jq '.[].tagName' --exclude-drafts --exclude-pre-releases)
           echo "BINWALK_PREBUILT_LATEST_TAG=$BINWALK_PREBUILT_LATEST_TAG" >> $GITHUB_ENV
           
       - name: Clone binwalk3 repo and check if there is a new and uncompiled yet version
@@ -81,7 +81,7 @@ jobs:
           cd /tmp/
           git clone 'https://github.com/ReFirmLabs/binwalk.git' -o binwalk3
 
-          cd /tmp/binwalk3/
+          cd "$BINWALK_ROOT_DIR"
           BINWALK_CURRENT_COMMIT_ID=$(git rev-parse --short HEAD)
           echo "BINWALK_CURRENT_COMMIT_ID=$BINWALK_CURRENT_COMMIT_ID" >> $GITHUB_ENV
           echo "BINWALK_CURRENT_COMMIT_ID=$BINWALK_CURRENT_COMMIT_ID" >> $GITHUB_OUTPUT
