@@ -1,0 +1,208 @@
+name: Build binary
+
+on:
+  workflow_dispatch
+  #schedule:
+  #  - cron: '5 5 * * *'
+
+permissions:
+  contents: write
+
+env:
+  CARGO_TERM_COLOR: always
+  BINWALK_ROOT_DIR: /tmp/binwalk3
+  APT: sudo apt -y -qq -o=Dpkg::Use-Pty=0
+
+defaults:
+  run:
+    # necessary for windows
+    shell: bash
+
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        # a list of all the targets
+        include:
+          - TARGET: x86_64-unknown-linux-gnu
+            OS: ubuntu-latest
+          
+          - TARGET: x86_64-unknown-linux-musl
+            OS: ubuntu-latest
+          
+          - TARGET: aarch64-unknown-linux-gnu
+            OS: ubuntu-24.04-arm
+          
+          - TARGET: aarch64-unknown-linux-musl
+            OS: ubuntu-24.04-arm
+          
+          - TARGET: armv7-unknown-linux-gnueabihf
+            OS: ubuntu-latest
+          
+          #- TARGET: armv7-unknown-linux-musleabihf
+          #  OS: ubuntu-latest
+          
+          - TARGET: arm-unknown-linux-gnueabihf
+            OS: ubuntu-latest
+          
+          #- TARGET: arm-unknown-linux-musleabihf
+          #  OS: ubuntu-latest
+          
+          # - TARGET: x86_64-apple-darwin
+          #   OS: macos-latest
+          
+          # - TARGET: x86_64-pc-windows-msvc
+          #   OS: windows-latest
+            
+    runs-on: ${{ matrix.OS }}
+
+    env:
+      NAME: binwalk_binary
+      TARGET: ${{ matrix.TARGET }}
+      OS: ${{ matrix.OS }}
+
+    outputs:
+      BINWALK_CURRENT_COMMIT_ID: ${{ steps.release_commit_id.outputs.BINWALK_CURRENT_COMMIT_ID }}
+      BINWALK_VERSION: ${{ steps.release_version.outputs.BINWALK_VERSION }}
+
+    steps:
+      - name: Get latest release tag of this repo
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          cd /tmp/
+          BINWALK_PREBUILT_LATEST_TAG=$(gh release list -R mycodedoesnotcompile2/BINWALK_prebuilt_binary --json tagName -L 1 --jq '.[].tagName' --exclude-drafts --exclude-pre-releases)
+          echo "BINWALK_PREBUILT_LATEST_TAG=$BINWALK_PREBUILT_LATEST_TAG" >> $GITHUB_ENV
+          
+      - name: Clone binwalk3 repo and check if there is a new and uncompiled yet version
+        id: release_commit_id
+        run: |
+          cd /tmp/
+          git clone 'https://github.com/ReFirmLabs/binwalk.git' -o binwalk3
+
+          cd /tmp/binwalk3/
+          BINWALK_CURRENT_COMMIT_ID=$(git rev-parse --short HEAD)
+          echo "BINWALK_CURRENT_COMMIT_ID=$BINWALK_CURRENT_COMMIT_ID" >> $GITHUB_ENV
+          echo "BINWALK_CURRENT_COMMIT_ID=$BINWALK_CURRENT_COMMIT_ID" >> $GITHUB_OUTPUT
+
+          # case: no new commit => abort the workflow
+          if [[ $BINWALK_PREBUILT_LATEST_TAG == $BINWALK_CURRENT_COMMIT_ID ]]; then
+            echo "[!] No new version to compile"
+            exit 100
+          fi
+
+      - name: Get binwalk3 version
+        id: release_version_cargo_get
+        uses: nicolaiunrein/cargo-get@master
+        with:
+          subcommand: package.version
+          options: --entry /tmp/binwalk3/Cargo.toml
+
+      - name: Set BINWALK_VERSION env var
+        id: release_version
+        run: |
+          BINWALK_VERSION=${{ steps.release_version_cargo_get.outputs.metadata }}
+          echo "BINWALK_VERSION=$BINWALK_VERSION" >> $GITHUB_ENV
+          echo "BINWALK_VERSION=$BINWALK_VERSION" >> $GITHUB_OUTPUT
+        
+      - name: Install and configure dependencies
+        run: |
+          if [[ $OS =~ ^ubuntu.*$ ]]; then
+            $APT update
+            $APT install crossbuild-essential-armhf libsqlite3-dev
+          fi
+
+          # for musl builds
+          if [[ $TARGET == *"-musl"* ]]; then
+            $APT install musl-tools
+          fi
+
+          # for arm targets
+          if [[ $TARGET == "arm"* ]]; then
+            cd "$BINWALK_ROOT_DIR"
+            cargo install --force --locked bindgen-cli
+          fi
+
+          # some additional configuration for cross-compilation on linux
+          cat >>~/.cargo/config.toml <<EOF
+          [target.armv7-unknown-linux-gnueabihf]
+          linker = "arm-linux-gnueabihf-gcc"
+          [target.armv7-unknown-linux-musleabihf]
+          linker = "arm-linux-gnueabihf-gcc"
+          [target.arm-unknown-linux-gnueabihf]
+          linker = "arm-linux-gnueabihf-gcc"
+          [target.arm-unknown-linux-musleabihf]
+          linker = "arm-linux-gnueabihf-gcc"
+          EOF
+      
+      - name: Install rust target
+        run: rustup target add $TARGET
+        
+      - name: Run build
+        run: |
+          cd $BINWALK_ROOT_DIR
+          #cargo build --release --verbose --target $TARGET
+          cargo build --release --target $TARGET
+      
+      - name: List build information
+        run: |
+          OLD_BINWALK_BIN_PATH="$BINWALK_ROOT_DIR/target/$TARGET/release/binwalk"
+          BINWALK_BIN_PATH="$BINWALK_ROOT_DIR-$BINWALK_VERSION-$TARGET"
+          BINWALK_BIN_HASH_PATH="$BINWALK_BIN_PATH.sha256.txt"
+          
+          cp -f "$OLD_BINWALK_BIN_PATH" "$BINWALK_BIN_PATH"
+          ls -alh "$BINWALK_BIN_PATH"
+
+          cd "$(dirname "$BINWALK_BIN_PATH")"
+          sha256sum --tag "$(basename "$BINWALK_BIN_PATH")" | tee "$BINWALK_BIN_HASH_PATH"
+          
+          echo "BINWALK_BIN_PATH=$BINWALK_BIN_PATH" >> $GITHUB_ENV
+          echo "BINWALK_BIN_HASH_PATH=$BINWALK_BIN_HASH_PATH" >> $GITHUB_ENV
+          
+      
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: binary-${{ matrix.TARGET }}
+          path: |
+            ${{ env.BINWALK_BIN_PATH }}
+            ${{ env.BINWALK_BIN_HASH_PATH }}
+
+
+  deploy_release:
+    needs: build
+    runs-on: ubuntu-latest
+    env:
+       BINWALK_CURRENT_COMMIT_ID: ${{ needs.build.outputs.BINWALK_CURRENT_COMMIT_ID }}
+       BINWALK_VERSION: ${{ needs.build.outputs.BINWALK_VERSION }}
+    
+    steps:
+     - name: Download Artifact
+       uses: actions/download-artifact@v4
+       with:
+        pattern: binary-*
+        merge-multiple: true
+        path: /tmp/results
+
+     - name: List target
+       run: |
+          cd "/tmp/results"
+          ls -alh
+  
+          RELEASE_NOTES="/tmp/release_notes.txt"
+          echo "RELEASE_NOTES=$RELEASE_NOTES" >> $GITHUB_ENV
+          
+          cat *.sha256.txt > "$RELEASE_NOTES"
+          mkdir -p "/tmp/hashes"
+          mv -f *.sha256.txt "/tmp/hashes/"
+  
+     - name: Create a new Github release
+       uses: softprops/action-gh-release@72f2c25fcb47643c292f7107632f7a47c1df5cd8 #v2.3.2
+       with:
+         make_latest: true
+         body_path: ${{ env.RELEASE_NOTES }}
+         name: version ${{ env.BINWALK_VERSION }} - build ${{ env.BINWALK_CURRENT_COMMIT_ID }}
+         tag_name: ${{ env.BINWALK_CURRENT_COMMIT_ID }}
+         files: |
+           /tmp/results/binwalk-*
