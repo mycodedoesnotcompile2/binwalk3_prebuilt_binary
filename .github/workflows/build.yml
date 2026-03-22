@@ -37,14 +37,14 @@ jobs:
           - TARGET: aarch64-unknown-linux-musl
             OS: ubuntu-24.04-arm
           
-          - TARGET: armv7-unknown-linux-gnueabihf
-            OS: ubuntu-latest
+          #- TARGET: armv7-unknown-linux-gnueabihf
+          #  OS: ubuntu-latest
           
           #- TARGET: armv7-unknown-linux-musleabihf
           #  OS: ubuntu-latest
           
-          - TARGET: arm-unknown-linux-gnueabihf
-            OS: ubuntu-latest
+          #- TARGET: arm-unknown-linux-gnueabihf
+          #  OS: ubuntu-latest
           
           #- TARGET: arm-unknown-linux-musleabihf
           #  OS: ubuntu-latest
@@ -153,6 +153,8 @@ jobs:
           
           cp -f "$OLD_BINWALK_BIN_PATH" "$BINWALK_BIN_PATH"
           ls -alh "$BINWALK_BIN_PATH"
+          ldd "$BINWALK_BIN_PATH" || true
+          "$BINWALK_BIN_PATH" -V
 
           cd "$(dirname "$BINWALK_BIN_PATH")"
           sha256sum --tag "$(basename "$BINWALK_BIN_PATH")" | tee "$BINWALK_BIN_HASH_PATH"
