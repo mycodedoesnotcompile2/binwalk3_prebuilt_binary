@@ -79,7 +79,7 @@ jobs:
         id: release_commit_id
         run: |
           cd /tmp/
-          git clone 'https://github.com/ReFirmLabs/binwalk.git' -o binwalk3
+          git clone 'https://github.com/ReFirmLabs/binwalk.git' binwalk3
 
           cd "$BINWALK_ROOT_DIR"
           BINWALK_CURRENT_COMMIT_ID=$(git rev-parse --short HEAD)
