@@ -45,11 +45,17 @@ jobs:
           #- TARGET: arm-unknown-linux-musleabihf
           #  OS: ubuntu-latest
           
-           - TARGET: x86_64-apple-darwin
+           - TARGET: aarch64-apple-darwin
              OS: macos-latest
+
+           - TARGET: x86_64-apple-darwin
+             OS: macos-26-intel
           
            - TARGET: x86_64-pc-windows-msvc
              OS: windows-latest
+
+           - TARGET: aarch64-pc-windows-msvc
+             OS: windows-11-arm
             
     runs-on: ${{ matrix.OS }}
 
