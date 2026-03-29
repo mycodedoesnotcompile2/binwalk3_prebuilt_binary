@@ -1,4 +1,4 @@
-name: Build binary
+name: Tests
 
 on:
   workflow_dispatch
