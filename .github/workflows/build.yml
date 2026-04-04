@@ -1,9 +1,9 @@
 name: Build binaries
 
 on:
-  workflow_dispatch
-  #schedule:
-  #  - cron: '5 5 * * *'
+  #workflow_dispatch
+  schedule:
+    - cron: '5 5 * * *'
 
 permissions:
   contents: write
@@ -190,6 +190,7 @@ jobs:
             ${{ env.BINWALK_BIN_PATH }}
             ${{ env.BINWALK_BIN_HASH_PATH }}
 
+##############
 
   deploy_release:
     needs: [checkout, build]
