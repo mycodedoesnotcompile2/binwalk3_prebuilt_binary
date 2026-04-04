@@ -7,7 +7,7 @@ The great ["binwalk"](https://github.com/ReFirmLabs/binwalk) tool, from ReFirmLa
 
 The building workflow is [here](https://github.com/mycodedoesnotcompile2/binwalk3_prebuilt_binary/blob/main/.github/workflows/build.yml).
 
-See the [Github release page](https://github.com/mycodedoesnotcompile2/binwalk3_prebuilt_binary/releases) of this repository to access prebuilt binaries for for different OSes (Linux, Windows, MacOS), different architectures (x64, arm64) and different libc (GNU, musl).
+See the [Github release page](https://github.com/mycodedoesnotcompile2/binwalk3_prebuilt_binary/releases/latest) of this repository to access prebuilt binaries for for different OSes (Linux, Windows, MacOS), different architectures (x64, arm64) and different libc (GNU, musl).
 
 For each release here, the tag corresponds to the latest short commit ID `git rev-parse --short HEAD` of the current latest main branch of [binwalk Github repository](https://github.com/ReFirmLabs/binwalk).
 
