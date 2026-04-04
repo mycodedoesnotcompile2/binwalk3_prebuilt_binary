@@ -54,14 +54,14 @@ jobs:
             exit 100
           fi
 
-      - name: Get arti version
+      - name: Get binwalk3 version
         id: release_version_cargo_get
         uses: nicolaiunrein/cargo-get@master
         with:
           subcommand: package.version
           options: --entry "$BINWALK_ROOT_DIR/Cargo.toml"
 
-      - name: Set ARTI_VERSION build variable
+      - name: Set BINWALK_VERSION build variable
         id: release_version
         run: |
           BINWALK_VERSION=${{ steps.release_version_cargo_get.outputs.metadata }}
