@@ -45,7 +45,7 @@ jobs:
 
           cd "$BINWALK_ROOT_DIR"
           BINWALK_CURRENT_COMMIT_ID=$(git rev-parse --short HEAD)
-          echo "BINWALK_CURRENT_COMMIT_ID=$BINWALK_CURRENT_COMMIT_ID" >> $GITHUB_ENV
+          #echo "BINWALK_CURRENT_COMMIT_ID=$BINWALK_CURRENT_COMMIT_ID" >> $GITHUB_ENV
           echo "BINWALK_CURRENT_COMMIT_ID=$BINWALK_CURRENT_COMMIT_ID" >> $GITHUB_OUTPUT
 
           # case: no new commit => abort the workflow
@@ -109,10 +109,12 @@ jobs:
       BINWALK_PREBUILT_LATEST_TAG: ${{ needs.checkout.outputs.BINWALK_PREBUILT_LATEST_TAG }}
       BINWALK_VERSION: ${{ needs.checkout.outputs.BINWALK_VERSION }}
 
-    outputs:
-
-
     steps:
+      - name: Clone binwalk3 repo
+        run: |
+          cd /tmp/
+          git clone --depth=1 'https://github.com/ReFirmLabs/binwalk.git' binwalk3
+      
       - name: Install and configure dependencies
         run: |
           if [[ $OS =~ ^ubuntu.*$ ]]; then
@@ -149,19 +151,22 @@ jobs:
       - name: Run build
         run: |
           cd $BINWALK_ROOT_DIR
-          #cargo build --release --verbose --target $TARGET
           cargo build --release --target $TARGET
       
       - name: List build information
         run: |
           OLD_BINWALK_BIN_PATH="$BINWALK_ROOT_DIR/target/$TARGET/release/binwalk"
-          BINWALK_BIN_PATH="$BINWALK_ROOT_DIR-$BINWALK_VERSION-$TARGET"
+
+          BINWALK_BIN_PATH="${{ runner.temp }}/$BINWALK_BIN_NAME-$BINWALK_VERSION-$TARGET"
+          if [[ $OS =~ ^windows.*$ ]]; then
+            BINWALK_BIN_PATH="${{ runner.temp }}/$BINWALK_BIN_NAME-$BINWALK_VERSION-$TARGET.exe"
+          fi
           BINWALK_BIN_HASH_PATH="$BINWALK_BIN_PATH.sha256.txt"
           
           cp -f "$OLD_BINWALK_BIN_PATH" "$BINWALK_BIN_PATH"
           ls -alh "$BINWALK_BIN_PATH"
           ldd "$BINWALK_BIN_PATH" || true
-          "$BINWALK_BIN_PATH" -V
+          "$BINWALK_BIN_PATH" -V || true
 
           cd "$(dirname "$BINWALK_BIN_PATH")"
           sha256sum --tag "$(basename "$BINWALK_BIN_PATH")" | tee "$BINWALK_BIN_HASH_PATH"
@@ -172,12 +177,12 @@ jobs:
 
       - name: List binwalk options + signatures/extractors 
         run: |
-          "$BINWALK_BIN_PATH" -h
-          "$BINWALK_BIN_PATH" -L
+          "$BINWALK_BIN_PATH" -h || true
+          "$BINWALK_BIN_PATH" -L || true
 
       
       - name: Upload artifact
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@v7
         with:
           name: binary-${{ matrix.TARGET }}
           path: |
@@ -186,11 +191,11 @@ jobs:
 
 
   deploy_release:
-    needs: build
+    needs: [checkout, build]
     runs-on: ubuntu-latest
     env:
-       BINWALK_CURRENT_COMMIT_ID: ${{ needs.build.outputs.BINWALK_CURRENT_COMMIT_ID }}
-       BINWALK_VERSION: ${{ needs.build.outputs.BINWALK_VERSION }}
+       BINWALK_CURRENT_COMMIT_ID: ${{ needs.checkout.outputs.BINWALK_CURRENT_COMMIT_ID }}
+       BINWALK_VERSION: ${{ needs.checkout.outputs.BINWALK_VERSION }}
     
     steps:
      - name: Download Artifact
@@ -220,4 +225,4 @@ jobs:
          name: version ${{ env.BINWALK_VERSION }} - build ${{ env.BINWALK_CURRENT_COMMIT_ID }}
          tag_name: ${{ env.BINWALK_CURRENT_COMMIT_ID }}
          files: |
-           /tmp/results/binwalk3-*
+           /tmp/results/${{ env.BINWALK_BIN_NAME }}-*
