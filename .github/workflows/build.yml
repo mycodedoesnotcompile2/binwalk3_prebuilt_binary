@@ -1,9 +1,9 @@
-name: Build binary
+name: Build binaries
 
 on:
-  #workflow_dispatch
-  schedule:
-    - cron: '5 5 * * *'
+  workflow_dispatch
+  #schedule:
+  #  - cron: '5 5 * * *'
 
 permissions:
   contents: write
@@ -11,19 +11,69 @@ permissions:
 env:
   CARGO_TERM_COLOR: always
   BINWALK_ROOT_DIR: /tmp/binwalk3
+  BINWALK_BIN_NAME: binwalk3
   APT: sudo apt -y -qq -o=Dpkg::Use-Pty=0
 
 defaults:
   run:
-    # necessary for windows
     shell: bash
 
 jobs:
+  checkout:
+    runs-on: ubuntu-latest
+    outputs:
+      BINWALK_PREBUILT_LATEST_TAG: ${{ steps.release_latest_tag.outputs.BINWALK_PREBUILT_LATEST_TAG }}
+      BINWALK_CURRENT_COMMIT_ID: ${{ steps.release_commit_id.outputs.BINWALK_CURRENT_COMMIT_ID }}
+      BINWALK_VERSION: ${{ steps.release_version.outputs.BINWALK_VERSION }}
+
+    steps:
+      - name: Get latest release tag of this repo
+        id: release_latest_tag
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          cd /tmp/
+          BINWALK_PREBUILT_LATEST_TAG=$(gh release list -R mycodedoesnotcompile2/binwalk3_prebuilt_binary --json tagName -L 1 --jq '.[].tagName' --exclude-drafts --exclude-pre-releases)
+          echo "BINWALK_PREBUILT_LATEST_TAG=$BINWALK_PREBUILT_LATEST_TAG" >> $GITHUB_OUTPUT
+          echo "BINWALK_PREBUILT_LATEST_TAG=$BINWALK_PREBUILT_LATEST_TAG" >> $GITHUB_ENV
+
+      - name: Clone binwalk repo and check if there is a new and uncompiled yet version
+        id: release_commit_id
+        run: |
+          cd /tmp/
+          git clone --depth=1 'https://github.com/ReFirmLabs/binwalk.git' binwalk3
+
+          cd "$BINWALK_ROOT_DIR"
+          BINWALK_CURRENT_COMMIT_ID=$(git rev-parse --short HEAD)
+          echo "BINWALK_CURRENT_COMMIT_ID=$BINWALK_CURRENT_COMMIT_ID" >> $GITHUB_ENV
+          echo "BINWALK_CURRENT_COMMIT_ID=$BINWALK_CURRENT_COMMIT_ID" >> $GITHUB_OUTPUT
+
+          # case: no new commit => abort the workflow
+          if [[ $BINWALK_PREBUILT_LATEST_TAG == $BINWALK_CURRENT_COMMIT_ID ]]; then
+            echo "[!] No new version to compile"
+            exit 100
+          fi
+
+      - name: Get arti version
+        id: release_version_cargo_get
+        uses: nicolaiunrein/cargo-get@master
+        with:
+          subcommand: package.version
+          options: --entry "$BINWALK_ROOT_DIR/Cargo.toml"
+
+      - name: Set ARTI_VERSION build variable
+        id: release_version
+        run: |
+          BINWALK_VERSION=${{ steps.release_version_cargo_get.outputs.metadata }}
+          echo "BINWALK_VERSION=$BINWALK_VERSION" >> $GITHUB_OUTPUT
+
+
+##############
+
   build:
     strategy:
       fail-fast: false
       matrix:
-        # a list of all the targets
         include:
           - TARGET: x86_64-unknown-linux-gnu
             OS: ubuntu-latest
@@ -63,49 +113,9 @@ jobs:
       OS: ${{ matrix.OS }}
 
     outputs:
-      BINWALK_CURRENT_COMMIT_ID: ${{ steps.release_commit_id.outputs.BINWALK_CURRENT_COMMIT_ID }}
-      BINWALK_VERSION: ${{ steps.release_version.outputs.BINWALK_VERSION }}
+
 
     steps:
-      - name: Get latest release tag of this repo
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          cd /tmp/
-          BINWALK_PREBUILT_LATEST_TAG=$(gh release list -R mycodedoesnotcompile2/binwalk3_prebuilt_binary --json tagName -L 1 --jq '.[].tagName' --exclude-drafts --exclude-pre-releases)
-          echo "BINWALK_PREBUILT_LATEST_TAG=$BINWALK_PREBUILT_LATEST_TAG" >> $GITHUB_ENV
-          
-      - name: Clone binwalk3 repo and check if there is a new and uncompiled yet version
-        id: release_commit_id
-        run: |
-          cd /tmp/
-          git clone 'https://github.com/ReFirmLabs/binwalk.git' binwalk3
-
-          cd "$BINWALK_ROOT_DIR"
-          BINWALK_CURRENT_COMMIT_ID=$(git rev-parse --short HEAD)
-          echo "BINWALK_CURRENT_COMMIT_ID=$BINWALK_CURRENT_COMMIT_ID" >> $GITHUB_ENV
-          echo "BINWALK_CURRENT_COMMIT_ID=$BINWALK_CURRENT_COMMIT_ID" >> $GITHUB_OUTPUT
-
-          # case: no new commit => abort the workflow
-          if [[ $BINWALK_PREBUILT_LATEST_TAG == $BINWALK_CURRENT_COMMIT_ID ]]; then
-            echo "[!] No new version to compile"
-            exit 100
-          fi
-
-      - name: Get binwalk3 version
-        id: release_version_cargo_get
-        uses: nicolaiunrein/cargo-get@master
-        with:
-          subcommand: package.version
-          options: --entry /tmp/binwalk3/Cargo.toml
-
-      - name: Set BINWALK_VERSION env var
-        id: release_version
-        run: |
-          BINWALK_VERSION=${{ steps.release_version_cargo_get.outputs.metadata }}
-          echo "BINWALK_VERSION=$BINWALK_VERSION" >> $GITHUB_ENV
-          echo "BINWALK_VERSION=$BINWALK_VERSION" >> $GITHUB_OUTPUT
-        
       - name: Install and configure dependencies
         run: |
           if [[ $OS =~ ^ubuntu.*$ ]]; then
