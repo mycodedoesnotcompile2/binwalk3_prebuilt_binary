@@ -87,30 +87,27 @@ jobs:
           - TARGET: aarch64-unknown-linux-musl
             OS: ubuntu-24.04-arm
           
-          #- TARGET: armv7-unknown-linux-gnueabihf
-          #  OS: ubuntu-latest
+          - TARGET: aarch64-apple-darwin
+            OS: macos-latest
+
+          - TARGET: x86_64-apple-darwin
+            OS: macos-26-intel
           
-          #- TARGET: armv7-unknown-linux-musleabihf
-          #  OS: ubuntu-latest
-          
-          #- TARGET: arm-unknown-linux-gnueabihf
-          #  OS: ubuntu-latest
-          
-          #- TARGET: arm-unknown-linux-musleabihf
-          #  OS: ubuntu-latest
-          
-          # - TARGET: x86_64-apple-darwin
-          #   OS: macos-latest
-          
-          # - TARGET: x86_64-pc-windows-msvc
-          #   OS: windows-latest
+          - TARGET: x86_64-pc-windows-msvc
+            OS: windows-latest
+
+          - TARGET: aarch64-pc-windows-msvc
+            OS: windows-11-arm
             
     runs-on: ${{ matrix.OS }}
 
     env:
-      NAME: binwalk_binary
       TARGET: ${{ matrix.TARGET }}
       OS: ${{ matrix.OS }}
+      CONTAINER: ${{ matrix.CONTAINER }}
+      
+      BINWALK_PREBUILT_LATEST_TAG: ${{ needs.checkout.outputs.BINWALK_PREBUILT_LATEST_TAG }}
+      BINWALK_VERSION: ${{ needs.checkout.outputs.BINWALK_VERSION }}
 
     outputs:
 
