@@ -45,7 +45,7 @@ jobs:
 
           cd "$BINWALK_ROOT_DIR"
           BINWALK_CURRENT_COMMIT_ID=$(git rev-parse --short HEAD)
-          #echo "BINWALK_CURRENT_COMMIT_ID=$BINWALK_CURRENT_COMMIT_ID" >> $GITHUB_ENV
+          echo "BINWALK_CURRENT_COMMIT_ID=$BINWALK_CURRENT_COMMIT_ID" >> $GITHUB_ENV
           echo "BINWALK_CURRENT_COMMIT_ID=$BINWALK_CURRENT_COMMIT_ID" >> $GITHUB_OUTPUT
 
           # case: no new commit => abort the workflow
