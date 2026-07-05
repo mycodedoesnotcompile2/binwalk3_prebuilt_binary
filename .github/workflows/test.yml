@@ -250,9 +250,9 @@ jobs:
           fi
           
           if [[ $TARGET == "mips"* ]]; then
-            $CC_COMPILER +nightly build -Z build-std=std,panic_abort -p binwalk --release --target $TARGET --features static
+            $CC_COMPILER +nightly build -Z build-std=std,panic_abort -p binwalk --release --target $TARGET
           else
-            $CC_COMPILER build -p binwalk --release --target $TARGET --features static
+            $CC_COMPILER build -p binwalk --release --target $TARGET
           fi
       
       - name: List build information
