@@ -49,7 +49,7 @@ jobs:
           BINWALK_CURRENT_COMMIT_ID=$(git rev-parse --short HEAD)
           echo "BINWALK_CURRENT_COMMIT_ID=$BINWALK_CURRENT_COMMIT_ID" >> $GITHUB_OUTPUT
 
-          case: no new commit => abort the workflow
+          # case: no new commit => abort the workflow
           if [[ $BINWALK_PREBUILT_LATEST_TAG == $BINWALK_CURRENT_COMMIT_ID ]]; then
             echo "[!] No new version to compile"
             exit 100
