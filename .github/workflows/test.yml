@@ -222,7 +222,7 @@ jobs:
 
           # for arm targets
           if [[ $TARGET == "arm"* ]]; then
-            cd "$ARTI_ROOT_DIR"
+            cd "$BINWALK_ROOT_DIR"
             cargo install --force --locked bindgen-cli
           fi
 
@@ -243,14 +243,16 @@ jobs:
         
       - name: Run build
         run: |
+          cd $BINWALK_ROOT_DIR
+          
           if [[ -z "${CC_COMPILER:-}" ]]; then
             CC_COMPILER="cargo"
           fi
           
           if [[ $TARGET == "mips"* ]]; then
-            $CC_COMPILER +nightly build -Z build-std=std,panic_abort -p arti --release --target $TARGET --features static
+            $CC_COMPILER +nightly build -Z build-std=std,panic_abort -p binwalk --release --target $TARGET --features static
           else
-            $CC_COMPILER build -p arti --release --target $TARGET --features static
+            $CC_COMPILER build -p binwalk --release --target $TARGET --features static
           fi
       
       - name: List build information
@@ -259,7 +261,7 @@ jobs:
           OLD_BINWALK_BIN_PATH="$OLD_BINWALK_BIN_DIR/target/$TARGET/release/binwalk"
           ls -alh "$OLD_BINWALK_BIN_DIR"
           if [[ $TARGET == *-windows-* ]]; then
-            OLD_BINWALK_BIN_PATH="$OLD_BINWALK_BIN_DIR/arti.exe"
+            OLD_BINWALK_BIN_PATH="$OLD_BINWALK_BIN_DIR/binwalk.exe"
           fi
 
           BINWALK_BIN_PATH="${{ runner.temp }}/$BINWALK_BIN_NAME-$BINWALK_VERSION-$TARGET"
