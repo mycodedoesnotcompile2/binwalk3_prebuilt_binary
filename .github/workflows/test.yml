@@ -81,41 +81,12 @@ jobs:
             
           - TARGET: x86_64-unknown-linux-gnu
             OS: ubuntu-latest
-            
-          - TARGET: i686-unknown-linux-gnu
-            OS: ubuntu-latest
-            CC_PKG: gcc-multilib
-
-          - TARGET: i686-unknown-linux-musl
-            OS: ubuntu-latest
-            CC_COMPILER: cross
-            CC_PKG: gcc-multilib
           
           - TARGET: aarch64-unknown-linux-musl
             OS: ubuntu-24.04-arm
             
           - TARGET: aarch64-unknown-linux-gnu
             OS: ubuntu-24.04-arm
-          
-          - TARGET: armv7-unknown-linux-musleabihf
-            OS: ubuntu-latest
-            CC_COMPILER: cross
-          
-          - TARGET: armv7-unknown-linux-gnueabihf
-            OS: ubuntu-latest
-            CC_PKG: crossbuild-essential-armhf
-
-          - TARGET: arm-unknown-linux-musleabihf
-            OS: ubuntu-latest
-            CC_COMPILER: cross
-          
-          - TARGET: arm-unknown-linux-gnueabihf
-            OS: ubuntu-latest
-            CC_PKG: gcc-arm-linux-gnueabihf g++-arm-linux-gnueabihf
-
-          - TARGET: arm-unknown-linux-musleabi
-            OS: ubuntu-latest
-            CC_COMPILER: cross
           
           - TARGET: aarch64-apple-darwin
             OS: macos-latest
@@ -137,21 +108,6 @@ jobs:
             OS: ubuntu-latest
             CC_COMPILER: cross
             
-          - TARGET: i586-unknown-linux-gnu
-            OS: ubuntu-latest
-            CC_COMPILER: cross
-
-          - TARGET: i586-unknown-linux-musl
-            OS: ubuntu-latest
-            CC_COMPILER: cross
-
-          - TARGET: i686-pc-windows-msvc
-            OS: windows-latest
-
-          - TARGET: i686-pc-windows-gnu
-            OS: ubuntu-latest
-            CC_PKG: gcc-mingw-w64-i686
-
           - TARGET: riscv64gc-unknown-linux-gnu
             OS: ubuntu-latest
             CC_PKG: gcc-riscv64-linux-gnu
@@ -165,10 +121,6 @@ jobs:
             CC_COMPILER: cross
 
           - TARGET: aarch64-linux-android
-            OS: ubuntu-latest
-            CC_COMPILER: cross
-            
-          - TARGET: armv7-linux-androideabi
             OS: ubuntu-latest
             CC_COMPILER: cross
             
