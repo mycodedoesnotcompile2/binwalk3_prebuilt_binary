@@ -258,7 +258,7 @@ jobs:
       - name: List build information
         run: |
           OLD_BINWALK_BIN_DIR="$BINWALK_ROOT_DIR/target/$TARGET/release"
-          OLD_BINWALK_BIN_PATH="$OLD_BINWALK_BIN_DIR/target/$TARGET/release/binwalk"
+          OLD_BINWALK_BIN_PATH="$OLD_BINWALK_BIN_DIR/binwalk"
           ls -alh "$OLD_BINWALK_BIN_DIR"
           if [[ $TARGET == *-windows-* ]]; then
             OLD_BINWALK_BIN_PATH="$OLD_BINWALK_BIN_DIR/binwalk.exe"
