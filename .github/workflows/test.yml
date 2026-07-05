@@ -147,6 +147,14 @@ jobs:
           - TARGET: mips64-unknown-linux-muslabi64
             OS: ubuntu-latest
             CC_COMPILER: cross
+          
+          - TARGET: loongarch64-unknown-linux-gnu
+            OS: ubuntu-latest
+            CC_PKG: gcc-loongarch64-linux-gnu g++-loongarch64-linux-gnu
+
+          - TARGET: loongarch64-unknown-linux-musl
+            OS: ubuntu-latest
+            CC_COMPILER: cross
             
     runs-on: ${{ matrix.OS }}
 
