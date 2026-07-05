@@ -104,21 +104,22 @@ jobs:
             OS: windows-11-arm
           # ------------------------------
 
-          - TARGET: x86_64-unknown-freebsd
-            OS: ubuntu-latest
-            CC_COMPILER: cross
+          # disabling all cross targets as there is a bug which provokes never-ending task
+          # - TARGET: x86_64-unknown-freebsd
+          #   OS: ubuntu-latest
+          #   CC_COMPILER: cross
 
-          - TARGET: x86_64-unknown-netbsd
-            OS: ubuntu-latest
-            CC_COMPILER: cross
+          # - TARGET: x86_64-unknown-netbsd
+          #   OS: ubuntu-latest
+          #   CC_COMPILER: cross
             
           - TARGET: riscv64gc-unknown-linux-gnu
             OS: ubuntu-latest
             CC_PKG: gcc-riscv64-linux-gnu
 
-          - TARGET: riscv64gc-unknown-linux-musl
-            OS: ubuntu-latest
-            CC_COMPILER: cross
+          # - TARGET: riscv64gc-unknown-linux-musl
+          #   OS: ubuntu-latest
+          #   CC_COMPILER: cross
             
           - TARGET: powerpc64-unknown-linux-gnu
             OS: ubuntu-latest
@@ -128,33 +129,33 @@ jobs:
             OS: ubuntu-latest
             CC_PKG: gcc-powerpc64le-linux-gnu g++-powerpc64le-linux-gnu
            
-          - TARGET: aarch64-linux-android
-            OS: ubuntu-latest
-            CC_COMPILER: cross
+          # - TARGET: aarch64-linux-android
+          #   OS: ubuntu-latest
+          #   CC_COMPILER: cross
             
           - TARGET: mips64el-unknown-linux-gnuabi64
             OS: ubuntu-latest
             CC_PKG: gcc-mips64el-linux-gnuabi64 g++-mips64el-linux-gnuabi64
            
-          - TARGET: mips64el-unknown-linux-muslabi64
-            OS: ubuntu-latest
-            CC_COMPILER: cross
+          # - TARGET: mips64el-unknown-linux-muslabi64
+          #   OS: ubuntu-latest
+          #   CC_COMPILER: cross
 
           - TARGET: mips64-unknown-linux-gnuabi64
             OS: ubuntu-latest
             CC_PKG: gcc-mips64-linux-gnuabi64 g++-mips64-linux-gnuabi64
            
-          - TARGET: mips64-unknown-linux-muslabi64
-            OS: ubuntu-latest
-            CC_COMPILER: cross
+          # - TARGET: mips64-unknown-linux-muslabi64
+          #   OS: ubuntu-latest
+          #   CC_COMPILER: cross
           
           - TARGET: loongarch64-unknown-linux-gnu
             OS: ubuntu-latest
             CC_PKG: gcc-14-loongarch64-linux-gnu g++-14-loongarch64-linux-gnu
 
-          - TARGET: loongarch64-unknown-linux-musl
-            OS: ubuntu-latest
-            CC_COMPILER: cross
+          # - TARGET: loongarch64-unknown-linux-musl
+          #   OS: ubuntu-latest
+          #   CC_COMPILER: cross
             
     runs-on: ${{ matrix.OS }}
 
