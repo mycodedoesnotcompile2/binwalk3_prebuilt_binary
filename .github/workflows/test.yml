@@ -1,104 +1,213 @@
-name: Tests
+name: Test
 
 on:
   workflow_dispatch
-  
+  # schedule:
+  #   - cron: '5 5 * * *'
+
 
 env:
   CARGO_TERM_COLOR: always
   BINWALK_ROOT_DIR: /tmp/binwalk3
+  BINWALK_BIN_NAME: binwalk3
+  BINWALK_REPO: https://github.com/ReFirmLabs/binwalk.git
   APT: sudo apt -y -qq -o=Dpkg::Use-Pty=0
+  CHOCO: choco install -y -r --no-progress
 
 defaults:
   run:
-    # necessary for windows
     shell: bash
 
 jobs:
-  build:
-    strategy:
-      fail-fast: false
-      matrix:
-        # a list of all the targets
-        include:
-          # - TARGET: x86_64-unknown-linux-gnu
-          #   OS: ubuntu-latest
-          
-          # - TARGET: x86_64-unknown-linux-musl
-          #   OS: ubuntu-latest
-          
-          # - TARGET: aarch64-unknown-linux-gnu
-          #   OS: ubuntu-24.04-arm
-          
-          # - TARGET: aarch64-unknown-linux-musl
-          #   OS: ubuntu-24.04-arm
-          
-          #- TARGET: armv7-unknown-linux-gnueabihf
-          #  OS: ubuntu-latest
-          
-          #- TARGET: armv7-unknown-linux-musleabihf
-          #  OS: ubuntu-latest
-          
-          #- TARGET: arm-unknown-linux-gnueabihf
-          #  OS: ubuntu-latest
-          
-          #- TARGET: arm-unknown-linux-musleabihf
-          #  OS: ubuntu-latest
-          
-           - TARGET: aarch64-apple-darwin
-             OS: macos-latest
-
-           - TARGET: x86_64-apple-darwin
-             OS: macos-26-intel
-          
-           - TARGET: x86_64-pc-windows-msvc
-             OS: windows-latest
-
-           - TARGET: aarch64-pc-windows-msvc
-             OS: windows-11-arm
-            
-    runs-on: ${{ matrix.OS }}
-
-    env:
-      NAME: binwalk_binary
-      TARGET: ${{ matrix.TARGET }}
-      OS: ${{ matrix.OS }}
-
+  checkout:
+    runs-on: ubuntu-latest
     outputs:
+      BINWALK_PREBUILT_LATEST_TAG: ${{ steps.release_latest_tag.outputs.BINWALK_PREBUILT_LATEST_TAG }}
       BINWALK_CURRENT_COMMIT_ID: ${{ steps.release_commit_id.outputs.BINWALK_CURRENT_COMMIT_ID }}
       BINWALK_VERSION: ${{ steps.release_version.outputs.BINWALK_VERSION }}
 
     steps:
-      - name: Clone binwalk3 repo and check if there is a new and uncompiled yet version
+      - name: Get latest release tag of this repo
+        id: release_latest_tag
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          cd /tmp/
+          BINWALK_PREBUILT_LATEST_TAG=$(gh release list -R mycodedoesnotcompile2/binwalk3_prebuilt_binary --json tagName -L 1 --jq '.[].tagName' --exclude-drafts --exclude-pre-releases)
+          echo "BINWALK_PREBUILT_LATEST_TAG=$BINWALK_PREBUILT_LATEST_TAG" >> $GITHUB_OUTPUT
+          echo "BINWALK_PREBUILT_LATEST_TAG=$BINWALK_PREBUILT_LATEST_TAG" >> $GITHUB_ENV
+
+      - name: Clone binwalk repo and check if there is a new and uncompiled yet version
         id: release_commit_id
         run: |
           cd /tmp/
-          git clone 'https://github.com/ReFirmLabs/binwalk.git' binwalk3
+          git clone --depth=1 "$BINWALK_REPO" binwalk3
 
           cd "$BINWALK_ROOT_DIR"
           BINWALK_CURRENT_COMMIT_ID=$(git rev-parse --short HEAD)
-          echo "BINWALK_CURRENT_COMMIT_ID=$BINWALK_CURRENT_COMMIT_ID" >> $GITHUB_ENV
+          #echo "BINWALK_CURRENT_COMMIT_ID=$BINWALK_CURRENT_COMMIT_ID" >> $GITHUB_ENV
           echo "BINWALK_CURRENT_COMMIT_ID=$BINWALK_CURRENT_COMMIT_ID" >> $GITHUB_OUTPUT
+
+          # case: no new commit => abort the workflow
+          # if [[ $BINWALK_PREBUILT_LATEST_TAG == $BINWALK_CURRENT_COMMIT_ID ]]; then
+          #   echo "[!] No new version to compile"
+          #   exit 100
+          # fi
 
       - name: Get binwalk3 version
         id: release_version_cargo_get
         uses: nicolaiunrein/cargo-get@master
         with:
           subcommand: package.version
-          options: --entry /tmp/binwalk3/Cargo.toml
+          options: --entry "$BINWALK_ROOT_DIR/Cargo.toml"
 
-      - name: Set BINWALK_VERSION env var
+      - name: Set BINWALK_VERSION build variable
         id: release_version
         run: |
           BINWALK_VERSION=${{ steps.release_version_cargo_get.outputs.metadata }}
-          echo "BINWALK_VERSION=$BINWALK_VERSION" >> $GITHUB_ENV
           echo "BINWALK_VERSION=$BINWALK_VERSION" >> $GITHUB_OUTPUT
-        
+
+
+##############
+
+  build:
+    needs: checkout
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - TARGET: x86_64-unknown-linux-musl
+            OS: ubuntu-latest
+            
+          - TARGET: x86_64-unknown-linux-gnu
+            OS: ubuntu-latest
+            
+          - TARGET: i686-unknown-linux-gnu
+            OS: ubuntu-latest
+            CC_PKG: gcc-multilib
+
+          - TARGET: i686-unknown-linux-musl
+            OS: ubuntu-latest
+            CC_COMPILER: cross
+            CC_PKG: gcc-multilib
+          
+          - TARGET: aarch64-unknown-linux-musl
+            OS: ubuntu-24.04-arm
+            
+          - TARGET: aarch64-unknown-linux-gnu
+            OS: ubuntu-24.04-arm
+          
+          - TARGET: armv7-unknown-linux-musleabihf
+            OS: ubuntu-latest
+            CC_COMPILER: cross
+          
+          - TARGET: armv7-unknown-linux-gnueabihf
+            OS: ubuntu-latest
+            CC_PKG: crossbuild-essential-armhf
+
+          - TARGET: arm-unknown-linux-musleabihf
+            OS: ubuntu-latest
+            CC_COMPILER: cross
+          
+          - TARGET: arm-unknown-linux-gnueabihf
+            OS: ubuntu-latest
+            CC_PKG: gcc-arm-linux-gnueabihf g++-arm-linux-gnueabihf
+
+          - TARGET: arm-unknown-linux-musleabi
+            OS: ubuntu-latest
+            CC_COMPILER: cross
+          
+          - TARGET: aarch64-apple-darwin
+            OS: macos-latest
+
+          - TARGET: x86_64-apple-darwin
+            OS: macos-26-intel
+          
+          - TARGET: x86_64-pc-windows-msvc
+            OS: windows-latest
+            
+          - TARGET: x86_64-pc-windows-gnu
+            OS: windows-latest
+            
+          - TARGET: aarch64-pc-windows-msvc
+            OS: windows-11-arm
+          # ------------------------------
+
+          - TARGET: x86_64-unknown-freebsd
+            OS: ubuntu-latest
+            CC_COMPILER: cross
+            
+          - TARGET: i586-unknown-linux-gnu
+            OS: ubuntu-latest
+            CC_COMPILER: cross
+
+          - TARGET: i586-unknown-linux-musl
+            OS: ubuntu-latest
+            CC_COMPILER: cross
+
+          - TARGET: i686-pc-windows-msvc
+            OS: windows-latest
+
+          - TARGET: i686-pc-windows-gnu
+            OS: ubuntu-latest
+            CC_PKG: gcc-mingw-w64-i686
+
+          - TARGET: riscv64gc-unknown-linux-gnu
+            OS: ubuntu-latest
+            CC_PKG: gcc-riscv64-linux-gnu
+
+          - TARGET: riscv64gc-unknown-linux-musl
+            OS: ubuntu-latest
+            CC_COMPILER: cross
+
+          - TARGET: powerpc64le-unknown-linux-gnu
+            OS: ubuntu-latest
+            CC_COMPILER: cross
+
+          - TARGET: aarch64-linux-android
+            OS: ubuntu-latest
+            CC_COMPILER: cross
+            
+          - TARGET: armv7-linux-androideabi
+            OS: ubuntu-latest
+            CC_COMPILER: cross
+            
+          - TARGET: mips64el-unknown-linux-gnuabi64
+            OS: ubuntu-latest
+            CC_PKG: gcc-mips64el-linux-gnuabi64 g++-mips64el-linux-gnuabi64
+           
+          - TARGET: mips64el-unknown-linux-muslabi64
+            OS: ubuntu-latest
+            CC_COMPILER: cross
+            
+    runs-on: ${{ matrix.OS }}
+
+    env:
+      TARGET: ${{ matrix.TARGET }}
+      OS: ${{ matrix.OS }}
+      CONTAINER: ${{ matrix.CONTAINER }}
+      CC_PKG: ${{ matrix.CC_PKG }}
+      CC_COMPILER: ${{ matrix.CC_COMPILER }}
+      CROSS_CONFIG: /tmp/cross.toml
+      
+      BINWALK_PREBUILT_LATEST_TAG: ${{ needs.checkout.outputs.BINWALK_PREBUILT_LATEST_TAG }}
+      BINWALK_VERSION: ${{ needs.checkout.outputs.BINWALK_VERSION }}
+
+    steps:
+      - name: Clone binwalk3 repo
+        run: |
+          cd /tmp/
+          git clone --depth=1 "$BINWALK_REPO" binwalk3
+      
       - name: Install and configure dependencies
         run: |
-          if [[ $OS =~ ^ubuntu.*$ ]]; then
+          if [[ $OS == windows* ]]; then
+            $CHOCO wget
+          fi
+          
+          if [[ $OS == ubuntu* ]]; then
             $APT update
-            $APT install crossbuild-essential-armhf libfontconfig1-dev liblzma-dev
+            $APT install libfontconfig1-dev liblzma-dev
           fi
 
           # for musl builds
@@ -106,43 +215,63 @@ jobs:
             $APT install musl-tools
           fi
 
+          # for everything else
+          if [[ -n "${CC_PKG:-}" ]]; then
+            $APT install $CC_PKG
+          fi
+
           # for arm targets
           if [[ $TARGET == "arm"* ]]; then
-            cd "$BINWALK_ROOT_DIR"
+            cd "$ARTI_ROOT_DIR"
             cargo install --force --locked bindgen-cli
           fi
 
-          # some additional configuration for cross-compilation on linux
-          cat >>~/.cargo/config.toml <<EOF
-          [target.armv7-unknown-linux-gnueabihf]
-          linker = "arm-linux-gnueabihf-gcc"
-          [target.armv7-unknown-linux-musleabihf]
-          linker = "arm-linux-gnueabihf-gcc"
-          [target.arm-unknown-linux-gnueabihf]
-          linker = "arm-linux-gnueabihf-gcc"
-          [target.arm-unknown-linux-musleabihf]
-          linker = "arm-linux-gnueabihf-gcc"
-          EOF
+          cargo install cross
+          
+          wget -nv "https://github.com/mycodedoesnotcompile2/rust_compile_config_files/raw/refs/heads/main/cross.toml" -O "$CROSS_CONFIG"
+          wget -nv "https://github.com/mycodedoesnotcompile2/rust_compile_config_files/raw/refs/heads/main/config.toml" -O ~/.cargo/config.toml
+          
       
       - name: Install rust target
-        run: rustup target add $TARGET
+        run: |
+          if [[ $TARGET == "mips"* ]]; then
+            rustup toolchain install nightly
+            rustup component add rust-src --toolchain nightly
+          else
+            rustup target add $TARGET
+          fi
         
       - name: Run build
         run: |
-          cd $BINWALK_ROOT_DIR
-          #cargo build --release --verbose --target $TARGET
-          cargo build --release --target $TARGET
+          if [[ -z "${CC_COMPILER:-}" ]]; then
+            CC_COMPILER="cargo"
+          fi
+          
+          if [[ $TARGET == "mips"* ]]; then
+            $CC_COMPILER +nightly build -Z build-std=std,panic_abort -p arti --release --target $TARGET --features static
+          else
+            $CC_COMPILER build -p arti --release --target $TARGET --features static
+          fi
       
       - name: List build information
         run: |
-          OLD_BINWALK_BIN_PATH="$BINWALK_ROOT_DIR/target/$TARGET/release/binwalk"
-          BINWALK_BIN_PATH="$BINWALK_ROOT_DIR-$BINWALK_VERSION-$TARGET"
+          OLD_BINWALK_BIN_DIR="$BINWALK_ROOT_DIR/target/$TARGET/release"
+          OLD_BINWALK_BIN_PATH="$OLD_BINWALK_BIN_DIR/target/$TARGET/release/binwalk"
+          ls -alh "$OLD_BINWALK_BIN_DIR"
+          if [[ $TARGET == *-windows-* ]]; then
+            OLD_BINWALK_BIN_PATH="$OLD_BINWALK_BIN_DIR/arti.exe"
+          fi
+
+          BINWALK_BIN_PATH="${{ runner.temp }}/$BINWALK_BIN_NAME-$BINWALK_VERSION-$TARGET"
+          if [[ $OS == windows* || $TARGET == *-windows-* ]]; then
+            BINWALK_BIN_PATH="${{ runner.temp }}/$BINWALK_BIN_NAME-$BINWALK_VERSION-$TARGET.exe"
+          fi
           BINWALK_BIN_HASH_PATH="$BINWALK_BIN_PATH.sha256.txt"
           
           cp -f "$OLD_BINWALK_BIN_PATH" "$BINWALK_BIN_PATH"
           ls -alh "$BINWALK_BIN_PATH"
           ldd "$BINWALK_BIN_PATH" || true
-          "$BINWALK_BIN_PATH" -V
+          "$BINWALK_BIN_PATH" -V || true
 
           cd "$(dirname "$BINWALK_BIN_PATH")"
           sha256sum --tag "$(basename "$BINWALK_BIN_PATH")" | tee "$BINWALK_BIN_HASH_PATH"
@@ -153,25 +282,26 @@ jobs:
 
       - name: List binwalk options + signatures/extractors 
         run: |
-          "$BINWALK_BIN_PATH" -h
-          "$BINWALK_BIN_PATH" -L
+          "$BINWALK_BIN_PATH" -h || true
+          "$BINWALK_BIN_PATH" -L || true
 
       
       - name: Upload artifact
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@v7
         with:
           name: binary-${{ matrix.TARGET }}
           path: |
             ${{ env.BINWALK_BIN_PATH }}
             ${{ env.BINWALK_BIN_HASH_PATH }}
 
+##############
 
   deploy_release:
-    needs: build
+    needs: [checkout, build]
     runs-on: ubuntu-latest
     env:
-       BINWALK_CURRENT_COMMIT_ID: ${{ needs.build.outputs.BINWALK_CURRENT_COMMIT_ID }}
-       BINWALK_VERSION: ${{ needs.build.outputs.BINWALK_VERSION }}
+       BINWALK_CURRENT_COMMIT_ID: ${{ needs.checkout.outputs.BINWALK_CURRENT_COMMIT_ID }}
+       BINWALK_VERSION: ${{ needs.checkout.outputs.BINWALK_VERSION }}
     
     steps:
      - name: Download Artifact
@@ -192,3 +322,13 @@ jobs:
           cat *.sha256.txt > "$RELEASE_NOTES"
           mkdir -p "/tmp/hashes"
           mv -f *.sha256.txt "/tmp/hashes/"
+  
+     # - name: Create a new Github release
+     #   uses: softprops/action-gh-release@718ea10b132b3b2eba29c1007bb80653f286566b #v3.0.1
+     #   with:
+     #     make_latest: true
+     #     body_path: ${{ env.RELEASE_NOTES }}
+     #     name: version ${{ env.BINWALK_VERSION }} - build ${{ env.BINWALK_CURRENT_COMMIT_ID }}
+     #     tag_name: ${{ env.BINWALK_CURRENT_COMMIT_ID }}
+     #     files: |
+     #       /tmp/results/${{ env.BINWALK_BIN_NAME }}-*
